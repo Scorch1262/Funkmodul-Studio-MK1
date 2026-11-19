@@ -36,11 +36,11 @@ jobs:
           $v = (Select-String -Path app/__init__.py -Pattern 'APP_VERSION = "(.+)"').Matches[0].Groups[1].Value
           "version=$v" >> $env:GITHUB_OUTPUT
 
-      - name: EXE bauen (PyInstaller, Ordner-Variante)
+      - name: EXE bauen (PyInstaller, eine einzige Datei)
         run: >
           pyinstaller main.py
           --name Proteus-BLE-Terminal-MK1
-          --noconfirm --clean --windowed
+          --onefile --noconfirm --clean --windowed
           --icon assets/icon.ico
           --add-data "assets;assets"
           --collect-submodules bleak
@@ -64,9 +64,7 @@ jobs:
         shell: pwsh
         run: |
           $v = "${{ steps.ver.outputs.version }}"
-          Copy-Item README.md dist/Proteus-BLE-Terminal-MK1/
-          Copy-Item -Recurse docs dist/Proteus-BLE-Terminal-MK1/docs
-          Compress-Archive -Path dist/Proteus-BLE-Terminal-MK1 -DestinationPath "Proteus-BLE-Terminal-MK1-v$v-windows.zip"
+          Compress-Archive -Path dist/Proteus-BLE-Terminal-MK1.exe -DestinationPath "Proteus-BLE-Terminal-MK1-v$v-windows.zip"
 
       - name: Artefakt hochladen
         uses: actions/upload-artifact@v4
@@ -78,4 +76,6 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: Proteus-BLE-Terminal-MK1-v${{ steps.ver.outputs.version }}-windows.zip
+          files: |
+            Proteus-BLE-Terminal-MK1-v${{ steps.ver.outputs.version }}-windows.zip
+            dist/Proteus-BLE-Terminal-MK1.exe

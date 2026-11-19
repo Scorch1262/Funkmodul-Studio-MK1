@@ -1,6 +1,6 @@
 # Proteus-BLE-Terminal-MK1
 
-**Version 1.0.1**
+**Version 1.0.2**
 
 ![Terminal](docs/screenshot-terminal.png)
 
@@ -71,9 +71,10 @@ direkt über die Bluetooth-Schnittstelle des PCs oder Laptops – nach dem Vorbi
 3. Fertige ZIP unter *Actions → letzter Lauf → Artifacts* herunterladen.
 4. Bei einem Tag `v*` (z. B. `v1.0.0`) wird zusätzlich ein Release mit der ZIP erstellt.
 
-Die erzeugte ZIP enthält den Ordner `Proteus-BLE-Terminal-MK1` mit
-`Proteus-BLE-Terminal-MK1.exe` und dem Unterordner `_internal` (Laufzeitbibliotheken).
-Den Ordner komplett entpacken und die EXE starten – keine Installation nötig.
+Die erzeugte ZIP enthält nur eine einzige Datei: `Proteus-BLE-Terminal-MK1.exe`.
+Keine Installation und keine Ordner daneben nötig – EXE an einen beliebigen Ort kopieren und starten.
+Beim Start entpackt die EXE ihre Laufzeitbibliotheken kurz in einen temporären Windows-Ordner,
+der erste Start dauert daher ein bis zwei Sekunden länger.
 
 ## Lokal starten (Entwicklung)
 
