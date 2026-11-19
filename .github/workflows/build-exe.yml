@@ -65,6 +65,7 @@ jobs:
         run: |
           $v = "${{ steps.ver.outputs.version }}"
           Copy-Item README.md dist/Proteus-BLE-Terminal-MK1/
+          Copy-Item -Recurse docs dist/Proteus-BLE-Terminal-MK1/docs
           Compress-Archive -Path dist/Proteus-BLE-Terminal-MK1 -DestinationPath "Proteus-BLE-Terminal-MK1-v$v-windows.zip"
 
       - name: Artefakt hochladen

@@ -1,6 +1,8 @@
 # Proteus-BLE-Terminal-MK1
 
-**Version 1.0.0**
+**Version 1.0.1**
+
+![Terminal](docs/screenshot-terminal.png)
 
 Windows-Desktop-Programm (keine Web-App) zum Testen von Würth-Elektronik-Bluetooth-LE-Funkmodulen
 direkt über die Bluetooth-Schnittstelle des PCs oder Laptops – nach dem Vorbild der mobilen App
@@ -36,6 +38,12 @@ direkt über die Bluetooth-Schnittstelle des PCs oder Laptops – nach dem Vorbi
 - Schreibart (automatisch / mit Antwort / ohne Antwort), Verbindungs-Timeout, Scan-Art
 - Eigene Service-/RX-/TX-UUIDs je Profil (für Module mit angepasster Firmware)
 - Gespeichert unter `%APPDATA%\Proteus-BLE-Terminal-MK1\settings.json`
+
+## Screenshots
+
+| Scan | GPIO |
+|---|---|
+| ![Scan](docs/screenshot-scan.png) | ![GPIO](docs/screenshot-gpio.png) |
 
 ## Unterstützte Module
 
@@ -85,6 +93,7 @@ app/settings.py             Einstellungen und Makros (JSON)
 app/theme.py                Dunkles Dashboard-Design
 app/ui/                     Oberfläche (Scan, Terminal, GPIO, Einstellungen, Info)
 assets/                     Icon und Grafiken
+docs/                       Screenshots für die README
 .github/workflows/          Build der EXE
 ```
 
