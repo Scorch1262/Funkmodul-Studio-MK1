@@ -70,6 +70,23 @@ HELP = {
              "und als Text/HEX angezeigt."),
         ],
     ),
+    "recipes": (
+        "Fertige Abläufe für das gewählte Modul",
+        [
+            ("Was ist ein Ablauf?", "Eine Folge von Befehlen für eine typische Aufgabe – z. B. Initialisierung nach "
+             "dem Start, SMS senden, Anruf, WLAN verbinden, Daten per Funk senden. Jeder Schritt ist erklärt."),
+            ("Parameter", "Werte wie Rufnummer, APN, WLAN-Name, Kanal oder Adresse oben eintragen – sie werden in "
+             "die Befehle eingesetzt (Spalte »Befehl«) und für das nächste Mal gespeichert."),
+            ("Ausführen", "»Ablauf starten« sendet Schritt für Schritt und wartet jeweils auf die erwartete Antwort "
+             "(z. B. OK, »>« oder eine Bestätigung des Moduls). Der Status zeigt OK, Fehler oder »keine Antwort«."),
+            ("Einzelne Schritte", "Schritt in der Tabelle anklicken: »Nur Auswahl« sendet nur diesen, »Ab Auswahl« "
+             "macht ab dort weiter. Die Antwort des Moduls steht unter der Tabelle."),
+            ("Hinweise", "Grüne Schritte verlangen eine Handlung am Gerät (z. B. SET-Pin auf GND) und warten auf "
+             "Bestätigung. Optionale Schritte brechen den Ablauf nie ab."),
+            ("Voraussetzung", "Modul und COM-Port werden im UART-Terminal gewählt und verbunden; alle Befehle "
+             "und Antworten erscheinen dort zusätzlich im Protokoll."),
+        ],
+    ),
     "uart_settings": (
         "Nutzereinstellungen des Moduls (UART)",
         [

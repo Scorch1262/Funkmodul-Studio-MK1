@@ -1,6 +1,6 @@
 # Funkmodul-Studio-MK1
 
-**Version 2.2.0**
+**Version 2.3.0**
 
 ![Terminal](docs/screenshot-terminal.png)
 
@@ -78,6 +78,17 @@ Jede Seite hat eine aufklappbare **Erklärung** (»?«), viele Felder zusätzlic
 - Transparenter Modus ohne Frame-Auswertung
 - Protokoll vollständig als TXT oder CSV speicherbar
 
+**Abläufe (neu)** – fertige Befehlsfolgen für jedes Modul
+- Für alle 33 Module, z. B. Initialisierung nach dem Start, PIN eingeben, SMS senden/lesen/empfangen,
+  Anruf aufbauen/annehmen, USSD/Guthaben, APN, TCP/HTTP/MQTT über Mobilfunk und WLAN, GNSS-Position,
+  5G-Status, WLAN verbinden, Access Point, BLE-Werbung, Funknetz einrichten (Kanal/Adressen),
+  Unicast/Broadcast, auf Funkdaten warten, GPIO schalten, Werkseinstellungen
+- Parameter (Rufnummer, APN, SSID, Kanal, Adresse …) einmal eintragen – sie werden in alle Befehle
+  eingesetzt und gespeichert
+- Schritt-für-Schritt-Ausführung: senden, auf die erwartete Antwort warten (OK, »>«, +CMGS,
+  Bestätigungs-Frame …), Status je Schritt, Antwort des Moduls anzeigen
+- Einzelnen Schritt senden oder ab einem Schritt weitermachen; Hinweis-Schritte für Handgriffe am Gerät
+
 **Modul-Einstellungen (UART)**
 - Alle Nutzereinstellungen des Moduls auf einmal lesen, Werte dekodiert und als HEX anzeigen
 - Einzelne Einstellungen bearbeiten und schreiben (mit Prüfung des Wertebereichs), Modul neu starten
@@ -139,6 +150,8 @@ Jede Seite hat eine aufklappbare **Erklärung** (»?«), viele Felder zusätzlic
 | Mobilfunk-Modem allgemein | GSM / LTE / 5G | 3GPP-Standardbefehle (SIM, Netz, SMS, Anrufe) | 115200 |
 
 ![Mobilfunk-Modem](docs/screenshot-uart-modem.png)
+
+![Abläufe](docs/screenshot-ablaeufe.png)
 
 Die automatische Erkennung unterscheidet diese Geräte anhand ihrer Antworten (z. B. ATI, AT+GMR,
 AT+VERSION?) und schlägt Modul und Baudrate vor. Für SMS und Socket-Daten gibt es die Knöpfe

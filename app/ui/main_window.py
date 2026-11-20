@@ -21,6 +21,7 @@ from .settings_page import SettingsPage
 from .terminal_page import TerminalPage
 from .uart_page import UartPage
 from .uart_settings_page import UartSettingsPage
+from .recipes_page import RecipesPage
 from ..uart.controller import UartController
 
 
@@ -102,18 +103,19 @@ class MainWindow(QMainWindow):
         self.settings_page = SettingsPage(self)
         self.uart_page = UartPage(self)
         self.uart_settings = UartSettingsPage(self)
+        self.recipes = RecipesPage(self)
         self.info = InfoPage(self)
         from .widgets import HelpPanel
         for key, page in (("scan", self.scan), ("terminal", self.terminal), ("gpio", self.gpio),
                           ("uart_settings", self.uart_settings)):
             page.layout().insertWidget(0, HelpPanel(key, self.settings))
         self.pages = {"scan": self.scan, "terminal": self.terminal, "gpio": self.gpio,
-                      "uart": self.uart_page, "uart_settings": self.uart_settings,
+                      "uart": self.uart_page, "recipes": self.recipes, "uart_settings": self.uart_settings,
                       "settings": self.settings_page, "info": self.info}
         self.nav = QButtonGroup(self)
         self.nav_btns = {}
         for key, text in (("scan", "SCAN"), ("terminal", "TERMINAL"), ("gpio", "GPIO"),
-                          ("uart", "UART-TERMINAL"), ("uart_settings", "MODUL-EINSTELLUNGEN"),
+                          ("uart", "UART-TERMINAL"), ("recipes", "ABLÄUFE"), ("uart_settings", "MODUL-EINSTELLUNGEN"),
                           ("settings", "EINSTELLUNGEN"), ("info", "INFO")):
             if key == "scan":
                 sv.addWidget(self._section("BLUETOOTH LE (PC)"))

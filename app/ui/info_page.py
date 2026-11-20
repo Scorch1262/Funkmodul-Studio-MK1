@@ -38,6 +38,7 @@ class InfoPage(QWidget):
         ut = label("Für Evaluation-Boards und USB-Sticks am COM-Port: Befehle mit Parameterformular, "
                    "automatischer Rahmen und XOR-Prüfsumme, farbige Auswertung von REQ/CNF/IND/RSP, "
                    "Nutzereinstellungen lesen/schreiben, transparenter Modus, DTR/RTS-Steuerung, Log-Export. "
+                   "Für jedes Modul gibt es fertige Abläufe (Seite »Abläufe«). "
                    "Anders als das Vorbild mit jedem USB-Seriell-Wandler (FTDI, CP210x, CH340/CH9102, PL2303, "
                    "MCP2221, CDC …) und mit automatischer Modul-Erkennung.", "Muted")
         ut.setWordWrap(True)
