@@ -62,9 +62,9 @@ class UartController(QObject):
         self.parser = FrameParser(self.module.proto)
         self._emit("info", "", "Transparenter Modus " + ("ein – keine Frame-Auswertung" if on else "aus"), b"")
 
-    def open(self, port, baud, bytesize, parity, stopbits, flow):
+    def open(self, port, baud, bytesize, parity, stopbits, flow, dtr=False, rts=False):
         self.port = port
-        if self.worker.open(port, baud, bytesize, parity, stopbits, flow):
+        if self.worker.open(port, baud, bytesize, parity, stopbits, flow, dtr, rts):
             self._emit("info", "", f"{port} geöffnet: {baud} Baud, {bytesize}{parity}{stopbits:g}, "
                                    f"Flusssteuerung {flow}", b"")
 

@@ -16,6 +16,7 @@ from ..theme import C
 from ..uart.framing import build_frame, command_payload, hexs, xor
 from ..uart.modules import MODULES
 from ..uart.serial_worker import available_ports
+from .detect_dialog import DetectDialog
 from .common import Card, hbox, label, set_pill
 
 BAUDS = [1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600, 1000000]
@@ -63,6 +64,9 @@ class UartPage(QWidget):
         self.flow.addItem("Keine Flusssteuerung", "none")
         self.flow.addItem("RTS/CTS", "rtscts")
         self.flow.addItem("XON/XOFF", "xonxoff")
+        self.btn_detect = QPushButton("Modul erkennen …")
+        self.btn_detect.setToolTip("Ports, Baudraten und Protokolle automatisch durchprobieren")
+        self.btn_detect.clicked.connect(self.detect)
         self.btn_open = QPushButton("Öffnen")
         self.btn_open.setObjectName("Primary")
         self.btn_open.setMinimumWidth(110)
@@ -71,9 +75,17 @@ class UartPage(QWidget):
         self.pill.setObjectName("Pill")
         self.pill.setFixedHeight(24)
         conn.lay.addWidget(hbox(label("Port", "Muted"), self.port, self.btn_ports, label("Modul", "Muted"),
-                                self.module, None, self.pill, self.btn_open))
+                                self.module, None, self.pill, self.btn_detect, self.btn_open))
+        self.chip = label("", "Muted")
+        self.chip.setWordWrap(True)
+        conn.lay.addWidget(self.chip)
+        self.port.currentIndexChanged.connect(self._port_info)
         self.dtr = QCheckBox("DTR")
         self.rts = QCheckBox("RTS")
+        self.dtr.setToolTip("Zustand wird schon beim Öffnen gesetzt (wichtig bei CH340/CP210x/PL2303/CDC)")
+        self.rts.setToolTip(self.dtr.toolTip())
+        self.dtr.setChecked(bool(s.get("uart_dtr", False)))
+        self.rts.setChecked(bool(s.get("uart_rts", False)))
         self.dtr.toggled.connect(lambda v: self.ctl.worker.set_lines(dtr=v))
         self.rts.toggled.connect(lambda v: self.ctl.worker.set_lines(rts=v))
         self.btn_rst = QPushButton("Reset-Impuls")
@@ -201,7 +213,13 @@ class UartPage(QWidget):
         self.stat_timer.timeout.connect(self._update_stats)
         self.stat_timer.start(1000)
 
+        self.known_ports: set[str] = set()
+        self.hotplug = QTimer(self)
+        self.hotplug.timeout.connect(self._hotplug_tick)
+        self.hotplug.start(2000)
+
         self.refresh_ports()
+        self.known_ports = {p.device for p in self.port_infos}
         self._fill_tree()
         self._mode_changed()
         self._on_state(False, "")
@@ -209,16 +227,74 @@ class UartPage(QWidget):
     # ------------------------------------------------------------------ Port
     def refresh_ports(self):
         cur = self.port.currentData()
+        self.port.blockSignals(True)
         self.port.clear()
-        ports = available_ports()
-        for dev, desc in ports:
-            self.port.addItem(f"{dev}   {desc}", dev)
-        if not ports:
+        self.port_infos = available_ports()
+        for p in self.port_infos:
+            self.port.addItem(p.label, p.device)
+            i = self.port.count() - 1
+            tip = [p.chip]
+            if p.manufacturer:
+                tip.append(f"Hersteller: {p.manufacturer}")
+            if p.product:
+                tip.append(f"Produkt: {p.product}")
+            if p.serial_number:
+                tip.append(f"Seriennummer: {p.serial_number}")
+            if p.vid is not None:
+                tip.append(f"VID:PID {p.vid:04X}:{p.pid or 0:04X}")
+            if p.driver_hint:
+                tip.append(p.driver_hint)
+            self.port.setItemData(i, "\n".join(tip), Qt.ToolTipRole)
+        if not self.port_infos:
             self.port.addItem("— kein COM-Port gefunden —", None)
         want = cur or self.mw.settings.get("uart_port")
         i = self.port.findData(want)
         if i >= 0:
             self.port.setCurrentIndex(i)
+        self.port.blockSignals(False)
+        self._port_info()
+
+    def _port_info(self):
+        dev = self.port.currentData()
+        info = next((p for p in getattr(self, "port_infos", []) if p.device == dev), None)
+        if info is None:
+            self.chip.setText("Kein Port gewählt. Unterstützt werden alle USB-Seriell-Wandler "
+                              "(FTDI, CP210x, CH340/CH9102, PL2303, MCP2221, CDC/ACM …).")
+            return
+        vp = f"  ·  VID:PID {info.vid:04X}:{info.pid or 0:04X}" if info.vid is not None else ""
+        hint = f"  ·  {info.driver_hint}" if info.driver_hint else ""
+        self.chip.setText(f"Wandler: {info.chip}{vp}{hint}")
+
+    def _hotplug_tick(self):
+        if self.ctl.is_open or self.port.view().isVisible():
+            return
+        now = {p.device for p in available_ports()}
+        if now != self.known_ports:
+            added = now - self.known_ports
+            removed = self.known_ports - now
+            self.known_ports = now
+            self.refresh_ports()
+            if added:
+                info = [p for p in self.port_infos if p.device in added]
+                self.mw.toast("Neuer Port: " + ", ".join(f"{p.device} ({p.chip})" for p in info))
+                if len(added) == 1 and not self.ctl.is_open:
+                    self.port.setCurrentIndex(max(0, self.port.findData(next(iter(added)))))
+            elif removed:
+                self.mw.toast("Port entfernt: " + ", ".join(sorted(removed)), error=True)
+
+    def detect(self):
+        if self.ctl.is_open:
+            self.ctl.close()
+        dlg = DetectDialog(self, [p for p in self.port_infos], self.port.currentData(),
+                           self.dtr.isChecked(), self.rts.isChecked())
+        if dlg.exec() and dlg.result_obj is not None:
+            r = dlg.result_obj
+            self.module.setCurrentIndex(max(0, self.module.findData(dlg.chosen_key or r.module_key)))
+            self.port.setCurrentIndex(max(0, self.port.findData(r.port)))
+            self.baud.setCurrentText(str(r.baud))
+            self.fmt.setCurrentText("8N1")
+            self.flow.setCurrentIndex(0)
+            self.toggle_open()
 
     def toggle_open(self):
         if self.ctl.is_open:
@@ -235,9 +311,11 @@ class UartPage(QWidget):
             return
         fmt = self.fmt.currentText()
         s = self.mw.settings
-        s.data.update({"uart_port": port, "uart_baud": baud, "uart_fmt": fmt})
+        s.data.update({"uart_port": port, "uart_baud": baud, "uart_fmt": fmt,
+                       "uart_dtr": self.dtr.isChecked(), "uart_rts": self.rts.isChecked()})
         s.save()
-        self.ctl.open(port, baud, int(fmt[0]), fmt[1], float(fmt[2]), self.flow.currentData())
+        self.ctl.open(port, baud, int(fmt[0]), fmt[1], float(fmt[2]), self.flow.currentData(),
+                      self.dtr.isChecked(), self.rts.isChecked())
 
     def _on_state(self, is_open, port):
         set_pill(self.pill, f"{port} OFFEN" if is_open else "GESCHLOSSEN", "ok" if is_open else "")
@@ -247,7 +325,7 @@ class UartPage(QWidget):
         self.btn_open.style().polish(self.btn_open)
         for w in (self.port, self.btn_ports, self.baud, self.fmt, self.flow):
             w.setEnabled(not is_open)
-        for w in (self.dtr, self.rts, self.btn_rst, self.pulse_line, self.btn_send, self.btn_send_cmd):
+        for w in (self.btn_rst, self.pulse_line, self.btn_send, self.btn_send_cmd):
             w.setEnabled(is_open)
         if not is_open:
             self.repeat_timer.stop()

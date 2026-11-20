@@ -3,8 +3,11 @@ from __future__ import annotations
 
 import threading
 import time
+from dataclasses import dataclass
 
 from PySide6.QtCore import QObject, Signal
+
+from .usb_chips import identify
 
 try:
     import serial
@@ -14,16 +17,69 @@ except ImportError:  # pragma: no cover
     list_ports = None
 
 
-def available_ports() -> list[tuple[str, str]]:
+@dataclass
+class PortInfo:
+    device: str
+    description: str
+    chip: str
+    driver_hint: str
+    vid: int | None
+    pid: int | None
+    manufacturer: str
+    product: str
+    serial_number: str
+
+    @property
+    def label(self) -> str:
+        prod = self.product or self.description or ""
+        if prod and prod.lower().startswith(self.device.lower()):
+            prod = ""
+        extra = f"  ·  {prod}" if prod and prod not in self.chip else ""
+        return f"{self.device}   {self.chip}{extra}"
+
+
+def available_ports() -> list[PortInfo]:
+    """Alle seriellen Ports – unabhängig vom USB-Seriell-Chip (FTDI, CP210x, CH340, PL2303, CDC …)."""
     if list_ports is None:
         return []
     out = []
-    for p in sorted(list_ports.comports(), key=lambda x: x.device):
-        desc = p.description or ""
-        if p.vid is not None:
-            desc += f"  [{p.vid:04X}:{p.pid:04X}]"
-        out.append((p.device, desc))
+    for p in sorted(list_ports.comports(), key=lambda x: _port_key(x.device)):
+        chip, hint = identify(p.vid, p.pid, p.description or "")
+        out.append(PortInfo(p.device, p.description or "", chip, hint, p.vid, p.pid,
+                            p.manufacturer or "", p.product or "", p.serial_number or ""))
     return out
+
+
+def _port_key(dev: str):
+    digits = "".join(c for c in dev if c.isdigit())
+    return (dev.rstrip("0123456789"), int(digits) if digits else 0)
+
+
+def open_port(port, baud, bytesize=8, parity="N", stopbits=1.0, flow="none", dtr=False, rts=False, timeout=0.05):
+    """Port öffnen und DTR/RTS schon VOR dem Öffnen festlegen.
+
+    Viele Wandler (CH340, CP210x, PL2303, CDC) setzen DTR/RTS sonst beim Öffnen aktiv –
+    auf Evaluation-Boards hängen daran oft RESET oder WAKE_UP des Funkmoduls.
+    """
+    ser = serial.Serial()
+    ser.port = port
+    ser.baudrate = baud
+    ser.bytesize = bytesize
+    ser.parity = parity
+    ser.stopbits = stopbits
+    ser.timeout = timeout
+    ser.write_timeout = 2
+    ser.rtscts = flow == "rtscts"
+    ser.xonxoff = flow == "xonxoff"
+    ser.dtr = dtr
+    if flow != "rtscts":
+        ser.rts = rts
+    ser.open()
+    try:
+        ser.reset_input_buffer()
+    except Exception:
+        pass
+    return ser
 
 
 class SerialWorker(QObject):
@@ -45,17 +101,14 @@ class SerialWorker(QObject):
     def is_open(self) -> bool:
         return self.ser is not None and self.ser.is_open
 
-    def open(self, port: str, baud: int, bytesize=8, parity="N", stopbits=1.0, flow="none"):
+    def open(self, port: str, baud: int, bytesize=8, parity="N", stopbits=1.0, flow="none",
+             dtr: bool = False, rts: bool = False):
         if serial is None:
             self.error.emit("pyserial ist nicht installiert.")
             return False
         self.close()
         try:
-            self.ser = serial.Serial(
-                port=port, baudrate=baud, bytesize=bytesize, parity=parity,
-                stopbits=stopbits, timeout=0.05, write_timeout=2,
-                rtscts=(flow == "rtscts"), xonxoff=(flow == "xonxoff"),
-            )
+            self.ser = open_port(port, baud, bytesize, parity, stopbits, flow, dtr, rts)
         except Exception as exc:
             self.ser = None
             self.error.emit(f"{port} konnte nicht geöffnet werden: {exc}")

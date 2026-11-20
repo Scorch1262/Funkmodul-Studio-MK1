@@ -1,6 +1,6 @@
 # Proteus-BLE-Terminal-MK1
 
-**Version 1.1.0**
+**Version 2.0.0**
 
 ![Terminal](docs/screenshot-terminal.png)
 
@@ -40,6 +40,14 @@ Unabhängiges Projekt, nicht von Würth Elektronik eiSos herausgegeben.
 - Anzeige von Pin-Änderungen, die das Modul selbst meldet
 
 **UART-Terminal (smartCommander-Funktionen)**
+- **Jeder USB-Seriell-Wandler**, nicht nur FTDI: CP210x, CH340/CH341/CH9102/CH343, PL2303, MCP2221,
+  STM32/nRF/RP2040/ESP32-CDC, J-Link-/ST-Link-/DAPLink-VCOM u. a. – der Chip wird anhand der
+  USB-IDs erkannt und mit Treiberhinweis angezeigt
+- **Automatische Modul-Erkennung**: probiert Ports, Baudraten und Protokolle durch und schlägt
+  Modul, Baudrate und Protokoll vor
+- Neue oder entfernte Ports werden automatisch erkannt (Board einstecken genügt)
+- DTR/RTS werden schon **vor** dem Öffnen gesetzt – CH340, CP210x, PL2303 und CDC-Wandler lösen
+  so beim Öffnen keinen ungewollten Reset des Moduls aus
 - COM-Port mit Baudrate, Datenformat (8N1, 8E1 …) und Flusssteuerung; Standard-Baudrate je Modul
 - Steuerleitungen DTR/RTS schalten und Reset-Impuls senden (Evaluation-Boards)
 - Befehlsliste je Modul, gruppiert und durchsuchbar, mit Parameterformular und Frame-Vorschau
@@ -64,6 +72,10 @@ Unabhängiges Projekt, nicht von Würth Elektronik eiSos herausgegeben.
 | UART-Terminal | Modul-Einstellungen |
 |---|---|
 | ![UART](docs/screenshot-uart.png) | ![Modul-Einstellungen](docs/screenshot-uart-settings.png) |
+
+| Modul-Erkennung |
+|---|
+| ![Modul-Erkennung](docs/screenshot-erkennung.png) |
 
 | Scan | GPIO |
 |---|---|
@@ -103,7 +115,8 @@ Unabhängiges Projekt, nicht von Würth Elektronik eiSos herausgegeben.
 - Windows 10 (ab Version 1809) oder Windows 11, 64 Bit
 - Für Bluetooth LE: Adapter mit Bluetooth Low Energy (ab Bluetooth 4.0), in Windows eingeschaltet;
   die Module müssen **nicht** in Windows gekoppelt werden
-- Für UART: Evaluation-Board oder USB-Stick mit USB-Seriell-Wandler (Treiber, z. B. FTDI, installiert)
+- Für UART: Evaluation-Board, USB-Stick oder eigenes Board mit beliebigem USB-Seriell-Wandler
+  (FTDI, CP210x, CH340, PL2303, CDC …); für CP210x, CH34x und PL2303 ggf. den Herstellertreiber installieren
 
 ## Build per GitHub Actions
 
@@ -134,7 +147,7 @@ app/protocol.py             UUIDs, Modultypen, Header, GPIO-Befehle, Kodierungen
 app/ble_worker.py           Bluetooth LE (bleak) im eigenen Thread
 app/settings.py             Einstellungen und Makros (JSON)
 app/theme.py                Dunkles Dashboard-Design
-app/uart/                   UART: Modultabellen, Frames, COM-Port, Steuerung
+app/uart/                   UART: Modultabellen, Frames, COM-Port, USB-Chips, Modul-Erkennung
 app/ui/                     Oberfläche (Scan, Terminal, GPIO, UART, Modul-Einstellungen, Info)
 assets/                     Icon und Grafiken
 docs/                       Screenshots für die README

@@ -1,0 +1,83 @@
+name: Build Windows EXE
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Abhängigkeiten installieren
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Version auslesen
+        id: ver
+        shell: pwsh
+        run: |
+          $v = (Select-String -Path app/__init__.py -Pattern 'APP_VERSION = "(.+)"').Matches[0].Groups[1].Value
+          "version=$v" >> $env:GITHUB_OUTPUT
+
+      - name: EXE bauen (PyInstaller, eine einzige Datei)
+        run: >
+          pyinstaller main.py
+          --name Proteus-BLE-Terminal-MK1
+          --onefile --noconfirm --clean --windowed
+          --icon assets/icon.ico
+          --add-data "assets;assets"
+          --collect-submodules bleak
+          --collect-submodules winrt
+          --hidden-import bleak.backends.winrt.scanner
+          --hidden-import bleak.backends.winrt.client
+          --hidden-import serial.tools.list_ports_windows
+          --collect-submodules serial
+          --exclude-module PySide6.QtWebEngineCore
+          --exclude-module PySide6.QtWebEngineWidgets
+          --exclude-module PySide6.Qt3DCore
+          --exclude-module PySide6.QtQuick
+          --exclude-module PySide6.QtQml
+          --exclude-module PySide6.QtMultimedia
+          --exclude-module tkinter
+
+      - name: Selbsttest (Import der BLE-Schicht)
+        shell: pwsh
+        run: |
+          python -c "import bleak, serial, app.protocol, app.ble_worker, app.uart.controller; print('Import OK')"
+
+      - name: ZIP erstellen
+        shell: pwsh
+        run: |
+          $v = "${{ steps.ver.outputs.version }}"
+          Compress-Archive -Path dist/Proteus-BLE-Terminal-MK1.exe -DestinationPath "Proteus-BLE-Terminal-MK1-v$v-windows.zip"
+
+      - name: Artefakt hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: Proteus-BLE-Terminal-MK1-v${{ steps.ver.outputs.version }}-windows
+          path: Proteus-BLE-Terminal-MK1-v${{ steps.ver.outputs.version }}-windows.zip
+
+      - name: Release (nur bei Tag v*)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            Proteus-BLE-Terminal-MK1-v${{ steps.ver.outputs.version }}-windows.zip
+            dist/Proteus-BLE-Terminal-MK1.exe
