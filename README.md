@@ -1,6 +1,6 @@
 # Funkmodul-Studio-MK1
 
-**Version 2.1.0**
+**Version 2.1.1**
 
 ![Terminal](docs/screenshot-terminal.png)
 
@@ -26,6 +26,9 @@ Jede Seite hat eine aufklappbare **Erklärung** (»?«), viele Felder zusätzlic
 - Filter: Name/Adresse, Mindest-RSSI, nur SPP-Profil, nur Würth-Kennung 0x031A, nur Geräte mit Namen
 - Sortierung nach RSSI, Name oder Adresse; nicht mehr gesehene Geräte werden ausgegraut
 - Verbinden per Doppelklick, Modultyp wird vorgeschlagen und kann geändert werden
+- Verbinden direkt über die MAC-Adresse; bis zu drei Versuche mit erneuter Suche, Abbruch jederzeit
+- Auch bei sehr vielen Bluetooth-Geräten in der Umgebung flüssig: Ergebnisse werden gesammelt und
+  gedrosselt angezeigt, ein ausgewähltes Gerät springt nicht mehr weg; Anzeige der Pakete pro Sekunde
 
 **Terminal**
 - Mehrere Geräte gleichzeitig verbunden, Umschalten über »Aktives Gerät« in der Kopfzeile

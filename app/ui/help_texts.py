@@ -11,7 +11,12 @@ HELP = {
             ("Filter", "Name/Adresse durchsucht die Liste. »min. RSSI« blendet schwache Geräte aus. "
              "»Nur SPP-Profil« zeigt nur Würth-Module mit Datenkanal, »0x031A« nur Geräte mit Würth-Kennung."),
             ("Verbinden", "Doppelklick oder »Verbinden« öffnet die Modulauswahl. Der Modultyp legt Header-Bytes, "
-             "Paketgröße und GPIO-Funktionen fest."),
+             "Paketgröße und GPIO-Funktionen fest. Klappt der erste Versuch nicht, sucht das Programm das Gerät "
+             "neu und versucht es bis zu dreimal; »Abbrechen« beendet den Versuch."),
+            ("Übersicht", "»Nur mit Namen« blendet namenlose Geräte (Handys, Beacons) aus. Ein ausgewähltes Gerät "
+             "bleibt fest an seiner Position, damit es sich sicher anklicken lässt."),
+            ("Mit Adresse verbinden", "Ist die MAC-Adresse bekannt (z. B. vom Aufkleber oder aus dem UART-Terminal), "
+             "kann direkt verbunden werden – auch wenn das Modul in der Liste nicht auftaucht."),
         ],
     ),
     "terminal": (

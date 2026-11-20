@@ -44,6 +44,7 @@ class BleWorker(QObject):
     scan_state = Signal(bool)
     # Verbindung
     connecting = Signal(str)
+    connect_progress = Signal(str, str)     # Adresse, Text
     connected = Signal(str, dict)
     disconnected = Signal(str, str)
     # Protokoll / Log: Adresse, Typ ("info"|"tx"|"rx"|"cmd_tx"|"cmd_rx"|"error"), Text, Daten
@@ -62,6 +63,12 @@ class BleWorker(QObject):
         self.sessions: dict[str, Session] = {}
         self.devices: dict[str, object] = {}     # Adresse -> BLEDevice aus dem Scan
         self.scanner: BleakScanner | None = None
+        # Scan-Ergebnisse werden gesammelt und von der Oberfläche abgeholt (kein Signal je Paket –
+        # unter Windows kommen sonst Hunderte Meldungen pro Sekunde und die Oberfläche friert ein)
+        self._scan_lock = threading.Lock()
+        self._scan_buf: dict[str, dict] = {}
+        self._scan_packets = 0
+        self._connect_tasks: dict[str, asyncio.Task] = {}
 
     # ------------------------------------------------------------------ intern
     def _run(self):
@@ -88,6 +95,15 @@ class BleWorker(QObject):
     def stop_scan(self):
         self._submit(self._stop_scan())
 
+    def take_scan_updates(self) -> tuple[list[dict], int]:
+        """Seit dem letzten Aufruf geänderte Geräte und Anzahl empfangener Pakete abholen."""
+        with self._scan_lock:
+            items = list(self._scan_buf.values())
+            n = self._scan_packets
+            self._scan_buf.clear()
+            self._scan_packets = 0
+        return items, n
+
     async def _start_scan(self):
         if self.scanner is not None:
             return
@@ -97,18 +113,30 @@ class BleWorker(QObject):
             self.devices[device.address] = device
             uuids = list(adv.service_uuids or [])
             mdata = {k: bytes(v) for k, v in (adv.manufacturer_data or {}).items()}
-            beacon = parse_we_beacon(mdata)
-            self.scan_result.emit({
-                "address": device.address,
-                "name": adv.local_name or device.name or "",
-                "rssi": adv.rssi,
-                "uuids": uuids,
-                "profile": profile_for_service(uuids, self.profiles()),
-                "we": WE_COMPANY_ID in mdata,
-                "beacon": beacon,
-                "tx_power": adv.tx_power,
-                "time": time.time(),
-            })
+            name = adv.local_name or device.name or ""
+            with self._scan_lock:
+                self._scan_packets += 1
+                old = self._scan_buf.get(device.address)
+                d = {
+                    "address": device.address,
+                    "name": name,
+                    "rssi": adv.rssi,
+                    "uuids": uuids,
+                    "profile": profile_for_service(uuids, self.profiles()),
+                    "we": WE_COMPANY_ID in mdata,
+                    "beacon": parse_we_beacon(mdata),
+                    "tx_power": adv.tx_power,
+                    "time": time.time(),
+                }
+                if old:   # Name/Profil aus früheren Paketen (Scan-Response) behalten
+                    d["name"] = d["name"] or old["name"]
+                    d["profile"] = d["profile"] or old["profile"]
+                    d["we"] = d["we"] or old["we"]
+                    d["uuids"] = d["uuids"] or old["uuids"]
+                    if d["beacon"] is None:
+                        d["beacon"] = old["beacon"]
+                self._scan_buf[device.address] = d
+
         try:
             self.scanner = BleakScanner(detection_callback=cb, scanning_mode=mode)
             await self.scanner.start()
@@ -131,7 +159,24 @@ class BleWorker(QObject):
 
     # ------------------------------------------------------------------ Verbinden
     def connect_device(self, address: str, name: str, module: ModuleSpec):
-        self._submit(self._connect(address, name, module))
+        async def run():
+            task = asyncio.ensure_future(self._connect(address, name, module))
+            self._connect_tasks[address] = task
+            try:
+                await task
+            except asyncio.CancelledError:
+                self._info(address, "Verbindungsaufbau abgebrochen.")
+                self.disconnected.emit(address, "Verbindungsaufbau abgebrochen.")
+            finally:
+                self._connect_tasks.pop(address, None)
+        self._submit(run())
+
+    def cancel_connect(self, address: str):
+        def do():
+            t = self._connect_tasks.get(address)
+            if t and not t.done():
+                t.cancel()
+        self.loop.call_soon_threadsafe(do)
 
     def disconnect_device(self, address: str):
         self._submit(self._disconnect(address))
@@ -162,23 +207,61 @@ class BleWorker(QObject):
         if was_scanning:
             await self._stop_scan()
 
-        target = self.devices.get(address, address)
         self._info(address, f"Verbinde mit {name or address} als {module.label} …")
 
         def on_disc(_client):
             self.loop.call_soon_threadsafe(asyncio.ensure_future, self._on_lost(address))
 
-        client = BleakClient(target, disconnected_callback=on_disc,
-                             timeout=float(self.settings.get("connect_timeout", 20)),
-                             winrt={"use_cached_services": False})
-        try:
-            await client.connect()
-        except Exception as exc:
-            self.disconnected.emit(address, f"Verbindung fehlgeschlagen: {exc}")
-            self._info(address, f"Verbindung fehlgeschlagen: {exc}")
+        timeout = float(self.settings.get("connect_timeout", 20))
+        client = None
+        last_exc = None
+        for attempt in (1, 2, 3):
+            if attempt == 1:
+                target = self.devices.get(address, address)
+                self.connect_progress.emit(address, "Verbinde …")
+            else:
+                # Gerät frisch suchen – unter Windows hilft das, wenn der erste Versuch scheitert
+                self.connect_progress.emit(address, f"Suche Gerät erneut (Versuch {attempt}/3) …")
+                self._info(address, f"Versuch {attempt}: Gerät wird neu gesucht …")
+                try:
+                    found = await BleakScanner.find_device_by_address(address, timeout=8.0)
+                except Exception:
+                    found = None
+                if found is None:
+                    last_exc = last_exc or RuntimeError("Gerät nicht gefunden (wirbt es noch?)")
+                    continue
+                self.devices[address] = found
+                target = found
+                self.connect_progress.emit(address, f"Verbinde (Versuch {attempt}/3) …")
+            client = BleakClient(target, disconnected_callback=on_disc, timeout=timeout,
+                                 winrt={"use_cached_services": False})
+            try:
+                await asyncio.wait_for(client.connect(), timeout + 5)
+                break
+            except asyncio.CancelledError:
+                try:
+                    await client.disconnect()
+                except Exception:
+                    pass
+                raise
+            except Exception as exc:
+                last_exc = exc
+                self._info(address, f"Versuch {attempt} fehlgeschlagen: {type(exc).__name__}: {exc}")
+                try:
+                    await client.disconnect()
+                except Exception:
+                    pass
+                client = None
+                await asyncio.sleep(0.5)
+        if client is None:
+            msg = f"Verbindung fehlgeschlagen: {last_exc}"
+            self.disconnected.emit(address, msg)
+            self._info(address, msg + " – Tipp: Modul neu starten, näher an den PC, "
+                                     "und prüfen, ob es nicht schon mit einem anderen Gerät verbunden ist.")
             if was_scanning:
                 await self._start_scan()
             return
+        self.connect_progress.emit(address, "Dienste werden gelesen …")
 
         profiles = self.profiles()
         svc_uuids = [s.uuid for s in client.services]
@@ -190,6 +273,8 @@ class BleWorker(QObject):
                   ", ".join(svc_uuids)
             self._info(address, msg)
             self.disconnected.emit(address, msg)
+            if was_scanning:
+                await self._start_scan()
             return
         if ptype != module.profile:
             self._info(address, f"Hinweis: Gerät bietet Profil {ptype.value}, gewähltes Modul erwartet "

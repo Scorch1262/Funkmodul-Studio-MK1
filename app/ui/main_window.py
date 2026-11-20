@@ -150,7 +150,6 @@ class MainWindow(QMainWindow):
 
         # --- Signale ------------------------------------------------------
         w = self.worker
-        w.scan_result.connect(self.scan.on_result)
         w.scan_state.connect(self._on_scan_state)
         w.connecting.connect(lambda a: self.toast(f"Verbinde mit {a} …"))
         w.connected.connect(self._on_connected)
