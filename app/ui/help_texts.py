@@ -49,8 +49,9 @@ HELP = {
         [
             ("① Port wählen", "Board oder USB-Stick einstecken – der Port erscheint automatisch. Angezeigt wird "
              "auch der USB-Seriell-Chip (FTDI, CP210x, CH340, PL2303, CDC …)."),
-            ("② Modul wählen", "Bestimmt Befehlsliste, Frame-Format und Standard-Baudrate. »Erkennen« probiert "
-             "Baudraten und Protokolle automatisch durch."),
+            ("② Modul wählen", "Bestimmt Befehlsliste, Frame-Format und Standard-Baudrate. Die Liste ist nach "
+             "Würth-Modulen, Fremdmodulen (HC-12, HC-05, HM-10, ESP8266/ESP32) und Mobilfunk-Modems (SIM800, "
+             "SIM7600, Quectel, u-blox, nRF91, 5G) sortiert. »Erkennen« probiert alles automatisch durch."),
             ("③ Verbinden", "Öffnet den Port. DTR/RTS werden vorher gesetzt – auf vielen Boards hängt daran der "
              "Reset des Moduls. »Reset-Impuls« startet das Modul über diese Leitung neu."),
             ("Befehle", "Gruppe wählen, Kachel anklicken, Parameter ausfüllen, »Senden«. Rote Kacheln setzen das "
@@ -61,7 +62,10 @@ HELP = {
              "Moduls (z. B. empfangene Funkdaten), RSP = Antwort (z. B. Senden abgeschlossen). Zeile anklicken "
              "zeigt die Zerlegung des Frames."),
             ("Freie Eingabe", "»Frame« baut aus Befehl + Daten automatisch einen gültigen Frame. »HEX roh« sendet "
-             "Bytes unverändert, »Text« z. B. AT-Befehle."),
+             "Bytes unverändert, »Text« z. B. AT-Befehle. »Strg+Z« schließt SMS- oder Datentext nach »>« ab, "
+             "»Esc« bricht ihn ab."),
+            ("Zeilenende", "Die meisten AT-Geräte erwarten CR LF. HC-12, HC-06 und HM-10 erwarten Befehle ohne "
+             "Zeilenende – das Programm wählt das passend zum Modul."),
             ("Transparenter Modus", "Für Module ohne Befehlsmodus: alle Daten werden unverändert weitergereicht "
              "und als Text/HEX angezeigt."),
         ],

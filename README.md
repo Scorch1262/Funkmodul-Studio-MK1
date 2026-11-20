@@ -1,6 +1,6 @@
 # Funkmodul-Studio-MK1
 
-**Version 2.1.1**
+**Version 2.2.0**
 
 ![Terminal](docs/screenshot-terminal.png)
 
@@ -10,6 +10,11 @@ Windows-Desktop-Programm (keine Web-App) zum Testen von Würth-Elektronik-Funkmo
 - **UART-Befehlsschnittstelle** über Evaluation-Boards und USB-Sticks – mit den Funktionen des
   PC-Tools »WE smartCommander« für Proteus, Thyone, Tarvos, Telesto, Thebe, Themisto, Metis,
   Calypso, Cordelia, Stephano, Daphnis, Adrastea und Skoll
+
+- **AT-Befehle weiterer Module und Modems**: HC-12, HC-05, HC-06/JDY-31, HM-10, ESP8266/ESP-12,
+  ESP32 (ESP-AT), SIMCom SIM800/SIM900, SIM7600/A7670/SIM7080, Quectel EC2x/EG9x/BG9x,
+  Quectel RM500Q/RM520N (5G), u-blox SARA/LARA, Nordic nRF91 sowie allgemeine 3GPP-Befehle
+  für jedes GSM-/LTE-/5G-Modem
 
 Unabhängiges Projekt, nicht von Würth Elektronik eiSos herausgegeben.
 
@@ -114,6 +119,30 @@ Jede Seite hat eine aufklappbare **Erklärung** (»?«), viele Felder zusätzlic
 | Daphnis-I | LoRaWAN / LoRa P2P | AT-Befehle | 9600 |
 | Adrastea-I | LTE-M / NB-IoT + GNSS | AT-Befehle | 115200 |
 | Skoll-I | Bluetooth Classic + LE | Text-API | 115200 |
+
+## Weitere Module und Modems (AT-Befehle)
+
+| Modul | Funk | Besonderheit | Standard-Baud |
+|---|---|---|---|
+| HC-12 | 433 MHz | Befehle ohne Zeilenende, SET-Pin auf GND | 9600 |
+| HC-05 | Bluetooth Classic | AT-Modus über KEY/EN-Pin | 38400 |
+| HC-06 / JDY-31 | Bluetooth Classic | Befehle ohne Zeilenende | 9600 |
+| HM-10 / HM-19 | Bluetooth LE | Befehle ohne Zeilenende, Antworten »OK+…« | 9600 |
+| ESP8266 / ESP-12 / ESP-01 | WLAN | ESP-AT: WLAN, TCP/UDP, SNTP | 115200 |
+| ESP32 / -C3 / -S3 | WLAN + BLE | ESP-AT: zusätzlich MQTT, HTTP, BLE | 115200 |
+| SIMCom SIM800 / SIM900 | GSM / GPRS | SMS, Anrufe, GPRS, HTTP | 115200 (Auto) |
+| SIMCom SIM7600 / A7670 / SIM7080 | LTE, LTE-M, NB-IoT | TCP, HTTP, MQTT, GNSS | 115200 |
+| Quectel EC2x / EG9x / BG9x | LTE, LTE-M, NB-IoT | TCP, HTTP, MQTT, GNSS, Zellinfo | 115200 |
+| Quectel RM500Q / RM520N / RG50x | 5G NR + LTE | 5G-Zellinfo, Bänder, CA, Modus | 115200 |
+| u-blox SARA-R4/R5 / LARA | LTE-M, NB-IoT, LTE | MNO-Profile, Sockets | 115200 |
+| Nordic nRF9160 / nRF9151 | LTE-M, NB-IoT + GNSS | Serial-LTE-Modem-Befehle | 115200 |
+| Mobilfunk-Modem allgemein | GSM / LTE / 5G | 3GPP-Standardbefehle (SIM, Netz, SMS, Anrufe) | 115200 |
+
+![Mobilfunk-Modem](docs/screenshot-uart-modem.png)
+
+Die automatische Erkennung unterscheidet diese Geräte anhand ihrer Antworten (z. B. ATI, AT+GMR,
+AT+VERSION?) und schlägt Modul und Baudrate vor. Für SMS und Socket-Daten gibt es die Knöpfe
+»Strg+Z« (0x1A) und »Esc« (0x1B).
 
 ## Bluetooth-LE-Module (PC-Bluetooth)
 

@@ -59,6 +59,8 @@ class ModuleDef:
     set_code: int | None = None
     settings_style: str = "id"  # id: [id] / [id, wert]   metis: [pos, len] / [pos, len, wert]
     note: str = ""
+    vendor: str = "Würth Elektronik"
+    eol: str = "\r\n"          # Zeilenende bei AT-/Text-Befehlen
 
 
 TYPE_SUFFIX = {0: "REQ", 1: "CNF", 2: "IND", 3: "RSP"}
@@ -572,6 +574,13 @@ MODULES: list[ModuleDef] = [
     _daphnis(),
     _adrastea(),
     _skoll(),
-    _transparent(),
 ]
+
+from .modules_at import EXTRA_MODULES  # noqa: E402  (braucht die Klassen oben)
+
+MODULES += EXTRA_MODULES
+MODULES.append(_transparent())
+for _m in MODULES:
+    if _m.key == "generic":
+        _m.vendor = "Allgemein"
 MODULE_BY_KEY = {m.key: m for m in MODULES}

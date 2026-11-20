@@ -6,6 +6,7 @@ USB-Seriell-Wandler, da nur der COM-Port benutzt wird.
 """
 from __future__ import annotations
 
+import re
 import threading
 import time
 from dataclasses import dataclass, field
@@ -15,7 +16,7 @@ from PySide6.QtCore import QObject, Signal
 from .framing import Frame, FrameParser, build_frame
 from .serial_worker import open_port
 
-DEFAULT_BAUDS = [115200, 9600, 921600, 57600, 38400, 19200, 230400, 460800]
+DEFAULT_BAUDS = [115200, 9600, 38400, 921600, 57600, 19200, 230400, 460800, 4800, 2400, 1200]
 
 
 @dataclass
@@ -111,7 +112,10 @@ class Detector(QObject):
         return None
 
     def _at(self, ser, cmd: str, wait=0.35) -> str:
-        return self._xfer(ser, cmd.encode() + b"\r\n", wait).decode("latin-1", "replace")
+        """AT-Befehl senden; das Echo des Befehls wird aus der Antwort entfernt."""
+        raw = self._xfer(ser, cmd.encode() + b"\r\n", wait).decode("latin-1", "replace")
+        lines = [ln for ln in raw.replace("\r", "\n").split("\n") if ln.strip() and ln.strip() != cmd]
+        return "\n".join(lines)
 
     # ------------------------------------------------------------------ Proben
     def _probe(self, ser, port, baud) -> DetectResult | None:
@@ -135,27 +139,105 @@ class Detector(QObject):
         f = self._frames(ser, "metis", 0x0C, b"", 0x8C)
         if f:
             return DetectResult(port, baud, "metis", "metis", ["metis"], "Antwort auf CMD_GET_FWRELEASE", True)
-        # 4) AT-Befehle
+        # 4) AT-Module ohne Zeilenende (HC-12, HC-06/JDY-31, HM-10)
+        r = self._xfer(ser, b"AT", 0.5).decode("latin-1", "replace")
+        if "OK" in r.upper():
+            res = self._classify_bare(ser, port, baud)
+            if res:
+                return res
+        self._xfer(ser, b"\r\n", 0.15)     # angefangene Zeile bei CR-LF-Geräten abschließen
+        # 5) Zeilenbasierte AT-Geräte
+        r = self._at(ser, "AT")
+        if "OK" in r.upper():
+            return self._classify_at(ser, port, baud)
+        # Calypso / Cordelia kennen kein reines »AT«, aber »AT+test«
         r = self._at(ser, "AT+test")
         if "OK" in r.upper() and "ERROR" not in r.upper():
             key = "calypso" if baud == 921600 else "cordelia"
             return DetectResult(port, baud, "at", key, ["calypso", "cordelia"],
                                 "Antwort auf AT+test (Calypso/Cordelia)", False)
-        r = self._at(ser, "AT+GMR")
-        if "AT VERSION" in r.upper() or ("OK" in r and "SDK" in r.upper()):
-            return DetectResult(port, baud, "at", "stephano", ["stephano"], "Antwort auf AT+GMR", True)
-        r = self._at(ser, "AT+CGMI")
-        if "OK" in r and len(r.strip()) > 2:
-            return DetectResult(port, baud, "at", "adrastea", ["adrastea"], "Antwort auf AT+CGMI: " +
-                                " ".join(r.split())[:40], True)
-        r = self._at(ser, "AT+VER=?") + self._at(ser, "AT")
-        if "OK" in r.upper() or "AT_ERROR" in r.upper():
-            return DetectResult(port, baud, "at", "daphnis", ["daphnis"], "Antwort auf AT-Befehl (LoRaWAN-AT)", False)
         # 5) Skoll-I (EZSerial-Text-API)
         r = self._xfer(ser, b"/PING\r\n", 0.3).decode("latin-1", "replace")
         if "@R" in r or ("PING" in r.upper() and len(r) > 7):
             return DetectResult(port, baud, "text", "skoll", ["skoll"], "Antwort auf /PING", False)
         return None
+
+    def _bare(self, ser, cmd: str, wait=0.5) -> str:
+        return self._xfer(ser, cmd.encode(), wait).decode("latin-1", "replace")
+
+    def _classify_bare(self, ser, port, baud) -> DetectResult | None:
+        v = self._bare(ser, "AT+V")
+        if "HC-12" in v.upper():
+            return DetectResult(port, baud, "at", "hc12", ["hc12"], "HC-12: " + " ".join(v.split())[:40], True)
+        a = self._bare(ser, "AT+ADDR?")
+        if "OK+ADDR" in a.upper():
+            return DetectResult(port, baud, "at", "hm10", ["hm10"], "BLE-Modul, " + " ".join(a.split())[:40], True)
+        ver = self._bare(ser, "AT+VERSION")
+        if "OK" in ver.upper() and ("LINVOR" in ver.upper() or "VERSION" in ver.upper() or "JDY" in ver.upper()):
+            return DetectResult(port, baud, "at", "hc06", ["hc06"], "HC-06/JDY-31: " + " ".join(ver.split())[:40], True)
+        return DetectResult(port, baud, "at", "hc12", ["hc12", "hc06", "hm10"],
+                            "Antwortet auf »AT« ohne Zeilenende (HC-12 / HC-06 / HM-10)", False)
+
+    def _classify_at(self, ser, port, baud) -> DetectResult:
+        def short(t):
+            seen, out = set(), []
+            for x in t.split():
+                if x not in ("OK", "AT", "ATI", "ERROR") and x not in seen:
+                    seen.add(x)
+                    out.append(x)
+            return " ".join(out)[:60]
+
+        # Würth Calypso / Cordelia
+        r = self._at(ser, "AT+test")
+        if "OK" in r.upper() and "ERROR" not in r.upper():
+            key = "calypso" if baud == 921600 else "cordelia"
+            return DetectResult(port, baud, "at", key, ["calypso", "cordelia"],
+                                "Antwort auf AT+test (Calypso/Cordelia)", False)
+        # ESP-AT (ESP8266, ESP32, Stephano-I)
+        g = self._at(ser, "AT+GMR")
+        gu = g.upper()
+        if "AT VERSION" in gu or "SDK VERSION" in gu:
+            if "STEPHANO" in gu:
+                key, sure = "stephano", True
+            elif "ESP32" in gu:
+                key, sure = "esp32", True
+            elif any(x in gu for x in ("ESP8266", "NONOS", "WROOM 02", "WROOM-02", "ESP-12", "ESP-01")):
+                key, sure = "esp8266", True
+            elif re.search(r"SDK VERSION:\s*\d", gu):     # NONOS-SDK (nur ESP8266) ohne »v«
+                key, sure = "esp8266", False
+            else:
+                key, sure = "esp32", False
+            return DetectResult(port, baud, "at", key, ["esp8266", "esp32", "stephano"],
+                                "ESP-AT: " + short(g), sure)
+        # HC-05 (AT-Modus, 38400 Baud)
+        v = self._at(ser, "AT+VERSION?")
+        if "+VERSION" in v.upper():
+            return DetectResult(port, baud, "at", "hc05", ["hc05"], "HC-05: " + short(v), True)
+        # Mobilfunk-Modems über Herstellerangaben
+        info = "\n".join([self._at(ser, "ATI", 0.6), self._at(ser, "AT+CGMI"), self._at(ser, "AT+CGMM")])
+        iu = info.upper()
+        cell = ["sim800", "sim7600", "quectel_lte", "quectel_5g", "ublox_sara", "nrf91", "adrastea", "modem_generic"]
+        if "SIMCOM" in iu or "SIM800" in iu or "SIM900" in iu or "SIM7" in iu or "A76" in iu:
+            key = "sim800" if any(x in iu for x in ("SIM800", "SIM900", "SIM868", "SIM808")) else "sim7600"
+            return DetectResult(port, baud, "at", key, cell, "SIMCom: " + short(info), True)
+        if "QUECTEL" in iu or any(x in iu for x in ("EC25", "EG91", "BG96", "BG95", "RM500", "RM520", "RG50")):
+            key = "quectel_5g" if any(x in iu for x in ("RM5", "RG5", "RM520", "RM500")) else "quectel_lte"
+            return DetectResult(port, baud, "at", key, cell, "Quectel: " + short(info), True)
+        if "U-BLOX" in iu or "SARA" in iu or "LARA" in iu:
+            return DetectResult(port, baud, "at", "ublox_sara", cell, "u-blox: " + short(info), True)
+        if "NORDIC" in iu or "NRF91" in iu:
+            return DetectResult(port, baud, "at", "nrf91", cell, "Nordic: " + short(info), True)
+        if any(x in iu for x in ("ALTAIR", "ALT1250", "SONY", "WURTH", "WÜRTH", "ADRASTEA")):
+            return DetectResult(port, baud, "at", "adrastea", cell, "Adrastea-I: " + short(info), True)
+        # Würth Daphnis-I (LoRaWAN-AT)
+        d = self._at(ser, "AT+VER=?")
+        if ("OK" in d.upper() or "+VER" in d.upper()) and "ERROR" not in d.upper():
+            return DetectResult(port, baud, "at", "daphnis", ["daphnis"], "LoRaWAN-AT: " + short(d), False)
+        if "OK" in info.upper():
+            return DetectResult(port, baud, "at", "modem_generic", cell,
+                                "AT-Modem: " + (short(info) or "Hersteller unbekannt"), False)
+        return DetectResult(port, baud, "at", "modem_generic", cell + ["hc05", "esp8266"],
+                            "Antwortet auf »AT« – Typ nicht eindeutig", False)
 
     def _classify_cmd16(self, ser, port, baud) -> DetectResult:
         has01 = self._get_ok(ser, 0x01) is not None

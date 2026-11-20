@@ -81,8 +81,16 @@ class UartPage(QWidget):
         # 2 Modul
         b2, l2, self.st2 = self._step(2, "MODUL", "Legt Befehle, Frame-Format und Baudrate fest")
         self.module = QComboBox()
+        self.module.setMaxVisibleItems(24)
+        last_vendor = None
         for m in MODULES:
-            self.module.addItem(f"{m.label}  ·  {m.family}", m.key)
+            if m.vendor != last_vendor:
+                last_vendor = m.vendor
+                self.module.addItem(f"──  {m.vendor.upper()}  ──", None)
+                it = self.module.model().item(self.module.count() - 1)
+                it.setEnabled(False)
+                it.setForeground(QColor(C["teal"]))
+            self.module.addItem(f"   {m.label}  ·  {m.family}", m.key)
         self.module.setCurrentIndex(max(0, self.module.findData(self.ctl.module.key)))
         self.module.currentIndexChanged.connect(self._module_changed)
         self.module.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon)
@@ -369,7 +377,13 @@ class UartPage(QWidget):
         card.lay.addWidget(hbox(label("Freie Eingabe", "Muted"), help_dot(
             "Frame: aus Befehl + Daten wird automatisch ein gültiger Frame.\nHEX roh: Bytes unverändert.\n"
             "Text: z. B. AT-Befehle, mit wählbarem Zeilenende."), self.mode, spacing=6))
-        card.lay.addWidget(hbox(self.input, self.eol, self.btn_send))
+        self.btn_ctrlz = QPushButton("Strg+Z")
+        self.btn_ctrlz.setToolTip("Sendet 0x1A – schließt z. B. SMS-Text (AT+CMGS) oder Daten bei AT+CIPSEND ab")
+        self.btn_ctrlz.clicked.connect(lambda: self.ctl.send_raw(b"\x1a", "Strg+Z"))
+        self.btn_esc = QPushButton("Esc")
+        self.btn_esc.setToolTip("Sendet 0x1B – bricht eine Eingabe nach »>« ab")
+        self.btn_esc.clicked.connect(lambda: self.ctl.send_raw(b"\x1b", "Esc"))
+        card.lay.addWidget(hbox(self.input, self.eol, self.btn_ctrlz, self.btn_esc, self.btn_send))
         return card
 
     # ================================================================ Port
@@ -474,13 +488,15 @@ class UartPage(QWidget):
         self.btn_open.style().polish(self.btn_open)
         for w in (self.port, self.btn_ports, self.baud, self.fmt, self.flow, self.btn_detect):
             w.setEnabled(not is_open)
-        for w in (self.btn_rst, self.pulse_line, self.btn_send, self.btn_send_cmd):
+        for w in (self.btn_rst, self.pulse_line, self.btn_send, self.btn_send_cmd, self.btn_ctrlz, self.btn_esc):
             w.setEnabled(is_open)
         if not is_open:
             self.repeat_timer.stop()
         self.mw.update_uart_pill(is_open, port)
 
     def _module_changed(self):
+        if self.module.currentData() is None:
+            return
         self.ctl.set_module(self.module.currentData())
         if not self.ctl.is_open:
             self.baud.setCurrentText(str(self.ctl.module.baud))
@@ -491,14 +507,21 @@ class UartPage(QWidget):
     def _fill_commands(self):
         m = self.ctl.module
         self.st2.set_done(True)
-        self.proto_lbl.setText(f"{m.family} · {PROTO_TEXT[m.proto]} · Standard {m.baud} Baud")
+        proto = PROTO_TEXT[m.proto]
+        if m.proto == "at":
+            proto = "AT-Befehle · " + ("mit CR LF" if m.eol else "ohne Zeilenende")
+        self.proto_lbl.setText(f"{m.vendor} · {m.family} · {proto} · Standard {m.baud} Baud")
         self.proto_lbl.setToolTip(m.note)
         for b in self.group_btns.buttons():
             self.group_btns.removeButton(b)
+            b.hide()
+            b.setParent(None)
             b.deleteLater()
         while self.group_flow.count():
             self.group_flow.takeAt(0)
         for t in self.tiles:
+            t.hide()
+            t.setParent(None)
             t.deleteLater()
         self.tiles = []
         while self.tile_flow.count():
@@ -514,7 +537,7 @@ class UartPage(QWidget):
             self.group_btns.addButton(b)
             self.group_flow.addWidget(b)
         for c in m.commands:
-            code = "AT" if c.at else (f"0x{c.code:02X}")
+            code = ("AT" if c.at.upper().startswith("AT") else "TXT") if c.at else (f"0x{c.code:02X}")
             if m.proto == "text" and c.at:
                 code = "TXT"
             t = Tile(c, code)
@@ -573,7 +596,8 @@ class UartPage(QWidget):
         m = self.ctl.module
         if c.at:
             self.cmd_title.setText(c.at.split("=")[0] if m.proto == "at" else c.name)
-            self.cmd_desc.setText(c.desc or "Vorlage anpassen und senden – das Zeilenende CR LF wird angehängt.")
+            end = "CR LF wird angehängt" if m.eol else "es wird kein Zeilenende angehängt"
+            self.cmd_desc.setText((c.desc + "  ·  " if c.desc else "") + f"Vorlage anpassen und senden – {end}.")
             e = QLineEdit(c.at)
             e.setObjectName("Payload")
             e.textChanged.connect(self._update_preview)
@@ -619,7 +643,8 @@ class UartPage(QWidget):
         c = self.current_cmd
         m = self.ctl.module
         if c.at:
-            return self._values()[0].encode("latin-1") + b"\r\n"
+            from ..protocol import Encoding, from_text
+            return from_text(self._values()[0], Encoding.ASCII) + m.eol.encode()
         return build_frame(m.proto, c.code, command_payload(m, c, self._values()))
 
     def _update_preview(self):
@@ -677,8 +702,8 @@ class UartPage(QWidget):
         self.mode.model().item(0).setEnabled(has_frames)
         if not has_frames and self.mode.currentData() == "frame":
             self.mode.setCurrentIndex(2)
-        if m.proto == "at" and self.mode.currentData() == "text":
-            self.eol.setCurrentIndex(3)
+        if m.proto in ("at", "text") and self.mode.currentData() == "text":
+            self.eol.setCurrentIndex({"": 0, "\r": 1, "\n": 2, "\r\n": 3}.get(m.eol, 3))
         mode = self.mode.currentData()
         self.eol.setEnabled(mode == "text")
         self.input.setPlaceholderText({
