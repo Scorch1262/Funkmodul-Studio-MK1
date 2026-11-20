@@ -1,12 +1,17 @@
 # Proteus-BLE-Terminal-MK1
 
-**Version 1.0.2**
+**Version 1.1.0**
 
 ![Terminal](docs/screenshot-terminal.png)
 
-Windows-Desktop-Programm (keine Web-App) zum Testen von Würth-Elektronik-Bluetooth-LE-Funkmodulen
-direkt über die Bluetooth-Schnittstelle des PCs oder Laptops – nach dem Vorbild der mobilen App
-»WE Bluetooth LE Terminal«. Unabhängiges Projekt, nicht von Würth Elektronik eiSos herausgegeben.
+Windows-Desktop-Programm (keine Web-App) zum Testen von Würth-Elektronik-Funkmodulen:
+
+- **Bluetooth LE über den PC-Adapter** – nach dem Vorbild der mobilen App »WE Bluetooth LE Terminal«
+- **UART-Befehlsschnittstelle** über Evaluation-Boards und USB-Sticks – mit den Funktionen des
+  PC-Tools »WE smartCommander« für Proteus, Thyone, Tarvos, Telesto, Thebe, Themisto, Metis,
+  Calypso, Cordelia, Stephano, Daphnis, Adrastea und Skoll
+
+Unabhängiges Projekt, nicht von Würth Elektronik eiSos herausgegeben.
 
 ## Funktionen
 
@@ -34,6 +39,21 @@ direkt über die Bluetooth-Schnittstelle des PCs oder Laptops – nach dem Vorbi
 - Ausgänge umschalten, PWM per Schieber einstellen, Werte einmalig oder zyklisch lesen
 - Anzeige von Pin-Änderungen, die das Modul selbst meldet
 
+**UART-Terminal (smartCommander-Funktionen)**
+- COM-Port mit Baudrate, Datenformat (8N1, 8E1 …) und Flusssteuerung; Standard-Baudrate je Modul
+- Steuerleitungen DTR/RTS schalten und Reset-Impuls senden (Evaluation-Boards)
+- Befehlsliste je Modul, gruppiert und durchsuchbar, mit Parameterformular und Frame-Vorschau
+- Rahmen (STX, Länge, XOR-Prüfsumme) wird automatisch gebaut; Senden auch wiederholt mit Intervall
+- Farbige Auswertung aller Frames: Anfrage (REQ), Bestätigung (CNF), Meldung (IND), Antwort (RSP)
+  mit Befehlsname, Status, Absender, RSSI und Nutzdaten
+- Freie Eingabe als Frame (nur CMD + Daten), als HEX roh oder als Text/AT-Befehl
+- Transparenter Modus ohne Frame-Auswertung
+- Protokoll vollständig als TXT oder CSV speicherbar
+
+**Modul-Einstellungen (UART)**
+- Alle Nutzereinstellungen des Moduls auf einmal lesen, Werte dekodiert und als HEX anzeigen
+- Einzelne Einstellungen bearbeiten und schreiben (mit Prüfung des Wertebereichs), Modul neu starten
+
 **Einstellungen**
 - Schreibart (automatisch / mit Antwort / ohne Antwort), Verbindungs-Timeout, Scan-Art
 - Eigene Service-/RX-/TX-UUIDs je Profil (für Module mit angepasster Firmware)
@@ -41,11 +61,32 @@ direkt über die Bluetooth-Schnittstelle des PCs oder Laptops – nach dem Vorbi
 
 ## Screenshots
 
+| UART-Terminal | Modul-Einstellungen |
+|---|---|
+| ![UART](docs/screenshot-uart.png) | ![Modul-Einstellungen](docs/screenshot-uart-settings.png) |
+
 | Scan | GPIO |
 |---|---|
 | ![Scan](docs/screenshot-scan.png) | ![GPIO](docs/screenshot-gpio.png) |
 
-## Unterstützte Module
+## UART-Module
+
+| Modul | Funk | Schnittstelle | Standard-Baud |
+|---|---|---|---|
+| Proteus-II, -III, -e, -IV | Bluetooth LE | Befehlsframes 0x02, 16-Bit-Länge | 115200 |
+| Thyone-I, Thyone-e | 2,4 GHz proprietär | Befehlsframes 0x02, 16-Bit-Länge | 115200 |
+| Tarvos-III, Tarvos-e | 868 MHz | Befehlsframes 0x02, 8-Bit-Länge | 115200 |
+| Telesto-III, Themisto-I | 915 MHz | Befehlsframes 0x02, 8-Bit-Länge | 115200 |
+| Thebe-II | 169 MHz | Befehlsframes 0x02, 8-Bit-Länge | 115200 |
+| Metis-I / Metis-II | Wireless M-Bus | Befehlsframes 0xFF | 9600 |
+| Metis-e | Wireless M-Bus | Befehlsframes 0x02 mit TLV-Optionen | 115200 |
+| Calypso, Cordelia-I | WLAN | AT-Befehle | 921600 / 115200 |
+| Stephano-I | WLAN + Bluetooth LE | AT-Befehle | 115200 |
+| Daphnis-I | LoRaWAN / LoRa P2P | AT-Befehle | 9600 |
+| Adrastea-I | LTE-M / NB-IoT + GNSS | AT-Befehle | 115200 |
+| Skoll-I | Bluetooth Classic + LE | Text-API | 115200 |
+
+## Bluetooth-LE-Module (PC-Bluetooth)
 
 | Modul | Profil | Header | GPIO |
 |---|---|---|---|
@@ -60,8 +101,9 @@ direkt über die Bluetooth-Schnittstelle des PCs oder Laptops – nach dem Vorbi
 ## Voraussetzungen
 
 - Windows 10 (ab Version 1809) oder Windows 11, 64 Bit
-- Bluetooth-Adapter mit Bluetooth Low Energy (ab Bluetooth 4.0), in Windows eingeschaltet
-- Die Module müssen **nicht** in Windows gekoppelt werden
+- Für Bluetooth LE: Adapter mit Bluetooth Low Energy (ab Bluetooth 4.0), in Windows eingeschaltet;
+  die Module müssen **nicht** in Windows gekoppelt werden
+- Für UART: Evaluation-Board oder USB-Stick mit USB-Seriell-Wandler (Treiber, z. B. FTDI, installiert)
 
 ## Build per GitHub Actions
 
@@ -92,7 +134,8 @@ app/protocol.py             UUIDs, Modultypen, Header, GPIO-Befehle, Kodierungen
 app/ble_worker.py           Bluetooth LE (bleak) im eigenen Thread
 app/settings.py             Einstellungen und Makros (JSON)
 app/theme.py                Dunkles Dashboard-Design
-app/ui/                     Oberfläche (Scan, Terminal, GPIO, Einstellungen, Info)
+app/uart/                   UART: Modultabellen, Frames, COM-Port, Steuerung
+app/ui/                     Oberfläche (Scan, Terminal, GPIO, UART, Modul-Einstellungen, Info)
 assets/                     Icon und Grafiken
 docs/                       Screenshots für die README
 .github/workflows/          Build der EXE

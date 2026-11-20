@@ -19,6 +19,9 @@ from .info_page import InfoPage
 from .scan_page import ScanPage
 from .settings_page import SettingsPage
 from .terminal_page import TerminalPage
+from .uart_page import UartPage
+from .uart_settings_page import UartSettingsPage
+from ..uart.controller import UartController
 
 
 class MainWindow(QMainWindow):
@@ -34,9 +37,10 @@ class MainWindow(QMainWindow):
         if icon:
             self.setWindowIcon(icon)
         self.resize(1280, 820)
-        self.setMinimumSize(980, 640)
+        self.setMinimumSize(1100, 700)
 
         self.worker = BleWorker(self.settings)
+        self.uart = UartController(self.settings)
 
         root = QWidget()
         root.setObjectName("Root")
@@ -59,7 +63,7 @@ class MainWindow(QMainWindow):
         tl.setContentsMargins(0, 8, 0, 8)
         tl.setSpacing(0)
         tl.addWidget(label("PROTEUS BLE TERMINAL", "AppTitle"))
-        tl.addWidget(label(f"MK1 · v{APP_VERSION} · Bluetooth LE über PC-Adapter", "AppSub"))
+        tl.addWidget(label(f"MK1 · v{APP_VERSION} · Bluetooth LE über PC-Adapter · UART-Befehlsschnittstelle", "AppSub"))
         th.addWidget(dot)
         th.addWidget(tcol)
         th.addStretch(1)
@@ -67,7 +71,9 @@ class MainWindow(QMainWindow):
         self.pill_scan.setObjectName("Pill")
         self.pill_conn = QLabel()
         self.pill_conn.setObjectName("Pill")
-        for pill in (self.pill_scan, self.pill_conn):
+        self.pill_uart = QLabel()
+        self.pill_uart.setObjectName("Pill")
+        for pill in (self.pill_scan, self.pill_conn, self.pill_uart):
             pill.setFixedHeight(24)
             th.addWidget(pill, 0, Qt.AlignVCenter)
         th.addSpacing(10)
@@ -85,7 +91,7 @@ class MainWindow(QMainWindow):
         bh.setSpacing(0)
         side = QFrame()
         side.setObjectName("SideBar")
-        side.setFixedWidth(190)
+        side.setFixedWidth(215)
         sv = QVBoxLayout(side)
         sv.setContentsMargins(0, 14, 0, 14)
         sv.setSpacing(2)
@@ -94,13 +100,23 @@ class MainWindow(QMainWindow):
         self.terminal = TerminalPage(self)
         self.gpio = GpioPage(self)
         self.settings_page = SettingsPage(self)
+        self.uart_page = UartPage(self)
+        self.uart_settings = UartSettingsPage(self)
         self.info = InfoPage(self)
         self.pages = {"scan": self.scan, "terminal": self.terminal, "gpio": self.gpio,
+                      "uart": self.uart_page, "uart_settings": self.uart_settings,
                       "settings": self.settings_page, "info": self.info}
         self.nav = QButtonGroup(self)
         self.nav_btns = {}
         for key, text in (("scan", "SCAN"), ("terminal", "TERMINAL"), ("gpio", "GPIO"),
+                          ("uart", "UART-TERMINAL"), ("uart_settings", "MODUL-EINSTELLUNGEN"),
                           ("settings", "EINSTELLUNGEN"), ("info", "INFO")):
+            if key == "scan":
+                sv.addWidget(self._section("BLUETOOTH LE (PC)"))
+            elif key == "uart":
+                sv.addWidget(self._section("UART · SMARTCOMMANDER"))
+            elif key == "settings":
+                sv.addWidget(self._section("PROGRAMM"))
             b = QPushButton(text)
             b.setObjectName("NavBtn")
             b.setCheckable(True)
@@ -109,8 +125,8 @@ class MainWindow(QMainWindow):
             self.nav_btns[key] = b
             sv.addWidget(b)
             self.stack.addWidget(self.pages[key])
-            if key == "gpio":
-                sv.addSpacing(18)
+            if key in ("gpio", "uart_settings"):
+                sv.addSpacing(14)
         sv.addStretch(1)
         self.side_status = label("", "Muted")
         self.side_status.setWordWrap(True)
@@ -196,7 +212,17 @@ class MainWindow(QMainWindow):
         n = len(self.devices)
         set_pill(self.pill_conn, f"{n} VERBUNDEN", "ok" if n else "")
         lines = [f"{d.name or d.address}\n{d.module.label}" for d in self.devices.values()]
-        self.side_status.setText("\n\n".join(lines) if lines else "Keine Verbindung")
+        self.side_status.setText("\n\n".join(lines) if lines else "Keine BLE-Verbindung")
+
+    @staticmethod
+    def _section(text):
+        lb = label(text, "CardTitle")
+        lb.setContentsMargins(16, 6, 8, 4)
+        lb.setStyleSheet("font-size:7.5pt; color:#4f5d70;")
+        return lb
+
+    def update_uart_pill(self, is_open, port):
+        set_pill(self.pill_uart, f"UART {port}" if is_open else "UART AUS", "ok" if is_open else "")
 
     def _on_scan_state(self, on):
         set_pill(self.pill_scan, "SCAN AKTIV" if on else "SCAN AUS", "warn" if on else "")
@@ -342,6 +368,10 @@ class MainWindow(QMainWindow):
         self.settings.data["window"] = bytes(self.saveGeometry().toBase64()).decode()
         self.settings.save()
         self.toast("Verbindungen werden getrennt …")
+        try:
+            self.uart.shutdown()
+        except Exception:
+            pass
         try:
             self.worker.shutdown()
         except Exception:

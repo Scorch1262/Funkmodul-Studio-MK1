@@ -4,6 +4,7 @@ from PySide6.QtWidgets import QScrollArea, QVBoxLayout, QWidget
 
 from .. import APP_NAME, APP_VERSION
 from ..protocol import MODULES
+from ..uart.modules import MODULES as UART_MODULES
 from .common import Card, label
 
 
@@ -33,7 +34,21 @@ class InfoPage(QWidget):
         c.lay.addWidget(t)
         root.addWidget(c)
 
-        m = Card("Unterstützte Module")
+        u = Card("UART-Befehlsschnittstelle (smartCommander-Funktionen)")
+        ut = label("Für Evaluation-Boards und USB-Sticks am COM-Port: Befehle mit Parameterformular, "
+                   "automatischer Rahmen und XOR-Prüfsumme, farbige Auswertung von REQ/CNF/IND/RSP, "
+                   "Nutzereinstellungen lesen/schreiben, transparenter Modus, DTR/RTS-Steuerung, Log-Export.", "Muted")
+        ut.setWordWrap(True)
+        u.lay.addWidget(ut)
+        for spec in UART_MODULES:
+            proto = {"cmd16": "Befehlsframes 0x02 (16-Bit-Länge)", "cmd8": "Befehlsframes 0x02 (8-Bit-Länge)",
+                     "metis": "Befehlsframes 0xFF", "at": "AT-Befehle", "text": "Text / transparent"}[spec.proto]
+            extra = f"  ·  {len(spec.commands)} Befehle" if spec.commands else ""
+            extra += f"  ·  {len(spec.settings)} Einstellungen" if spec.settings else ""
+            u.lay.addWidget(label(f"{spec.label:<22}  ·  {spec.family}  ·  {proto}  ·  {spec.baud} Baud{extra}"))
+        root.addWidget(u)
+
+        m = Card("Bluetooth-LE-Module (PC-Bluetooth)")
         for spec in MODULES:
             feats = [spec.profile.value, f"Standard-MTU {spec.default_mtu}"]
             feats.append("Header 0x01/0x02" if spec.uses_header else "ohne Header")
@@ -54,6 +69,8 @@ class InfoPage(QWidget):
             "GPIO-Fernsteuerung funktioniert nur, wenn die Pins im Modul für den Fernzugriff "
             "freigegeben sind (siehe Modul-Handbuch, Remote-GPIO).",
             "Mehrere Geräte können gleichzeitig verbunden sein; das aktive Gerät wird oben rechts gewählt.",
+            "UART: Das Evaluation-Board bzw. den USB-Stick per USB anschließen, COM-Port und Modul wählen, "
+            "»Öffnen«. Die Standard-Baudrate des Moduls wird automatisch vorgeschlagen.",
             "Einstellungen und Makros liegen unter %APPDATA%\\" + APP_NAME + ".",
         ):
             lb = label("•  " + txt, "Muted")
