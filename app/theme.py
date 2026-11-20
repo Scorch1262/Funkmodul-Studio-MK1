@@ -150,6 +150,36 @@ QSlider::groove:horizontal {{ height: 4px; background: {C['border2']}; border-ra
 QSlider::sub-page:horizontal {{ background: {C['teal']}; border-radius: 2px; }}
 QSlider::handle:horizontal {{ background: {C['amber']}; width: 14px; margin: -6px 0; border-radius: 7px; }}
 
+/* ---------- Hilfe ---------- */
+QFrame#Help {{ background: #0e1620; border: 1px solid {C['teal_dim']}; border-left: 3px solid {C['teal']}; border-radius: 6px; }}
+QLabel#HelpIcon {{ background: {C['teal_dim']}; color: {C['teal']}; border-radius: 11px; font-weight: 800; }}
+QLabel#HelpTitle {{ color: {C['text']}; font-weight: 600; }}
+QLabel#HelpDot {{ background: {C['panel3']}; color: {C['teal']}; border: 1px solid {C['teal_dim']}; border-radius: 8px; font-size: 8pt; font-weight: 800; }}
+QPushButton#Link {{ background: transparent; border: none; color: {C['teal']}; padding: 2px 4px; font-weight: 500; }}
+QPushButton#Link:hover {{ color: {C['amber']}; }}
+
+/* ---------- Kacheln ---------- */
+QFrame#Tile, QFrame#TileDanger {{ background: {C['panel2']}; border: 1px solid {C['border']}; border-radius: 6px; }}
+QFrame#Tile:hover {{ border-color: {C['teal']}; background: {C['panel3']}; }}
+QFrame#TileDanger {{ border-color: #4a2020; }}
+QFrame#TileDanger:hover {{ border-color: {C['red']}; background: #241417; }}
+QFrame#Tile[sel="true"], QFrame#TileDanger[sel="true"] {{ border: 2px solid {C['amber']}; background: #1f1a10; }}
+QLabel#TileName {{ font-weight: 700; color: {C['text']}; }}
+QLabel#TileCode {{ font-family: {MONO}; font-size: 8.5pt; color: {C['amber']}; }}
+QLabel#TileDesc {{ color: {C['muted']}; font-size: 8.5pt; }}
+QPushButton#GroupChip {{ border-radius: 13px; padding: 4px 14px; background: {C['panel2']}; font-weight: 600; }}
+QPushButton#GroupChip:checked {{ background: {C['amber']}; color: #1a1205; border-color: {C['amber']}; }}
+
+/* ---------- Kennzahlen / Schritte ---------- */
+QFrame#Kpi {{ background: {C['panel2']}; border: 1px solid {C['border']}; border-radius: 6px; }}
+QLabel#KpiTitle {{ color: {C['dim']}; font-size: 7.5pt; font-weight: 700; letter-spacing: 1px; }}
+QLabel#KpiValue {{ font-size: 13pt; font-weight: 700; color: {C['text']}; }}
+QLabel#Step {{ background: {C['panel3']}; border: 2px solid {C['border2']}; border-radius: 13px; color: {C['muted']}; font-weight: 800; }}
+QLabel#Step[done="true"] {{ background: {C['teal_dim']}; border-color: {C['teal']}; color: {C['teal']}; }}
+QFrame#StepBox {{ background: {C['panel2']}; border: 1px solid {C['border']}; border-radius: 6px; }}
+QLabel#StepTitle {{ font-weight: 700; letter-spacing: 1px; font-size: 8.5pt; color: {C['muted']}; }}
+QFrame#Analysis {{ background: #0b1118; border: 1px solid {C['border']}; border-radius: 6px; }}
+
 QMenu {{ background: {C['panel2']}; border: 1px solid {C['border2']}; padding: 0; }}
 QMenu::item {{ padding: 6px 18px; }}
 QMenu::item:selected {{ background: {C['panel3']}; color: {C['amber']}; }}

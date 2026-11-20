@@ -1,4 +1,4 @@
-"""Startpunkt von Proteus-BLE-Terminal-MK1."""
+"""Startpunkt von Funkmodul-Studio-MK1."""
 import os
 import sys
 
@@ -13,7 +13,7 @@ def main():
         # Eigene Taskleisten-Gruppe (sonst erscheint das Python-Symbol)
         try:
             import ctypes
-            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("ProteusBLETerminal.MK1")
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("FunkmodulStudio.MK1")
         except Exception:
             pass
 

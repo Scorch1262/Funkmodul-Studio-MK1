@@ -29,6 +29,8 @@ class SettingsPage(QWidget):
         root = QVBoxLayout(host)
         root.setContentsMargins(18, 18, 18, 18)
         root.setSpacing(14)
+        from .widgets import HelpPanel
+        root.addWidget(HelpPanel("settings", s))
 
         # --- Verbindung --------------------------------------------------
         c1 = Card("Verbindung & Scan")

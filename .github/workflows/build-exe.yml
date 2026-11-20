@@ -39,7 +39,7 @@ jobs:
       - name: EXE bauen (PyInstaller, eine einzige Datei)
         run: >
           pyinstaller main.py
-          --name Proteus-BLE-Terminal-MK1
+          --name Funkmodul-Studio-MK1
           --onefile --noconfirm --clean --windowed
           --icon assets/icon.ico
           --add-data "assets;assets"
@@ -66,18 +66,18 @@ jobs:
         shell: pwsh
         run: |
           $v = "${{ steps.ver.outputs.version }}"
-          Compress-Archive -Path dist/Proteus-BLE-Terminal-MK1.exe -DestinationPath "Proteus-BLE-Terminal-MK1-v$v-windows.zip"
+          Compress-Archive -Path dist/Funkmodul-Studio-MK1.exe -DestinationPath "Funkmodul-Studio-MK1-v$v-windows.zip"
 
       - name: Artefakt hochladen
         uses: actions/upload-artifact@v4
         with:
-          name: Proteus-BLE-Terminal-MK1-v${{ steps.ver.outputs.version }}-windows
-          path: Proteus-BLE-Terminal-MK1-v${{ steps.ver.outputs.version }}-windows.zip
+          name: Funkmodul-Studio-MK1-v${{ steps.ver.outputs.version }}-windows
+          path: Funkmodul-Studio-MK1-v${{ steps.ver.outputs.version }}-windows.zip
 
       - name: Release (nur bei Tag v*)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            Proteus-BLE-Terminal-MK1-v${{ steps.ver.outputs.version }}-windows.zip
-            dist/Proteus-BLE-Terminal-MK1.exe
+            Funkmodul-Studio-MK1-v${{ steps.ver.outputs.version }}-windows.zip
+            dist/Funkmodul-Studio-MK1.exe

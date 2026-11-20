@@ -62,8 +62,8 @@ class MainWindow(QMainWindow):
         tl = QVBoxLayout(tcol)
         tl.setContentsMargins(0, 8, 0, 8)
         tl.setSpacing(0)
-        tl.addWidget(label("PROTEUS BLE TERMINAL", "AppTitle"))
-        tl.addWidget(label(f"MK1 · v{APP_VERSION} · Bluetooth LE über PC-Adapter · UART-Befehlsschnittstelle", "AppSub"))
+        tl.addWidget(label("FUNKMODUL STUDIO", "AppTitle"))
+        tl.addWidget(label(f"MK1 · v{APP_VERSION} · Bluetooth LE & UART für Würth-Funkmodule", "AppSub"))
         th.addWidget(dot)
         th.addWidget(tcol)
         th.addStretch(1)
@@ -103,6 +103,10 @@ class MainWindow(QMainWindow):
         self.uart_page = UartPage(self)
         self.uart_settings = UartSettingsPage(self)
         self.info = InfoPage(self)
+        from .widgets import HelpPanel
+        for key, page in (("scan", self.scan), ("terminal", self.terminal), ("gpio", self.gpio),
+                          ("uart_settings", self.uart_settings)):
+            page.layout().insertWidget(0, HelpPanel(key, self.settings))
         self.pages = {"scan": self.scan, "terminal": self.terminal, "gpio": self.gpio,
                       "uart": self.uart_page, "uart_settings": self.uart_settings,
                       "settings": self.settings_page, "info": self.info}

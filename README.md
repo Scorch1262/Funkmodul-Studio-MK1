@@ -1,6 +1,6 @@
-# Proteus-BLE-Terminal-MK1
+# Funkmodul-Studio-MK1
 
-**Version 2.0.0**
+**Version 2.1.0**
 
 ![Terminal](docs/screenshot-terminal.png)
 
@@ -12,6 +12,11 @@ Windows-Desktop-Programm (keine Web-App) zum Testen von Würth-Elektronik-Funkmo
   Calypso, Cordelia, Stephano, Daphnis, Adrastea und Skoll
 
 Unabhängiges Projekt, nicht von Würth Elektronik eiSos herausgegeben.
+
+> Früherer Name: *Proteus-BLE-Terminal-MK1*. Einstellungen und Makros der Vorgängerversion werden beim
+> ersten Start automatisch übernommen.
+
+Jede Seite hat eine aufklappbare **Erklärung** (»?«), viele Felder zusätzlich kleine »?«-Hinweise mit Tooltip.
 
 ## Funktionen
 
@@ -39,7 +44,14 @@ Unabhängiges Projekt, nicht von Würth Elektronik eiSos herausgegeben.
 - Ausgänge umschalten, PWM per Schieber einstellen, Werte einmalig oder zyklisch lesen
 - Anzeige von Pin-Änderungen, die das Modul selbst meldet
 
-**UART-Terminal (smartCommander-Funktionen)**
+**UART-Terminal (smartCommander-Funktionen)** – grafisch aufgebaut
+- Verbindung in drei Schritten (Port → Modul → Verbinden) mit Häkchen für erledigte Schritte
+- Befehle als Kacheln, nach Gruppen filterbar und durchsuchbar; rote Kacheln = setzt das Modul zurück
+- Parameterformular mit Erklärung je Feld und grafischer Vorschau des Frames
+  (Start, Befehl, Länge, Daten, Prüfsumme als farbige Byte-Kästchen)
+- Protokoll als Tabelle mit farbigen Typen; Klick auf eine Zeile zerlegt den Frame grafisch
+  und erklärt Typ, Status und Inhalt
+- Kennzahlen: gesendet, empfangen, Fehler, letzter RSSI, Bytes
 - **Jeder USB-Seriell-Wandler**, nicht nur FTDI: CP210x, CH340/CH341/CH9102/CH343, PL2303, MCP2221,
   STM32/nRF/RP2040/ESP32-CDC, J-Link-/ST-Link-/DAPLink-VCOM u. a. – der Chip wird anhand der
   USB-IDs erkannt und mit Treiberhinweis angezeigt
@@ -65,13 +77,15 @@ Unabhängiges Projekt, nicht von Würth Elektronik eiSos herausgegeben.
 **Einstellungen**
 - Schreibart (automatisch / mit Antwort / ohne Antwort), Verbindungs-Timeout, Scan-Art
 - Eigene Service-/RX-/TX-UUIDs je Profil (für Module mit angepasster Firmware)
-- Gespeichert unter `%APPDATA%\Proteus-BLE-Terminal-MK1\settings.json`
+- Gespeichert unter `%APPDATA%\Funkmodul-Studio-MK1\settings.json`
 
 ## Screenshots
 
-| UART-Terminal | Modul-Einstellungen |
+![UART-Terminal](docs/screenshot-uart.png)
+
+| Befehl & Frame-Analyse | Modul-Einstellungen |
 |---|---|
-| ![UART](docs/screenshot-uart.png) | ![Modul-Einstellungen](docs/screenshot-uart-settings.png) |
+| ![Frame-Analyse](docs/screenshot-uart-analyse.png) | ![Modul-Einstellungen](docs/screenshot-uart-settings.png) |
 
 | Modul-Erkennung |
 |---|
@@ -126,7 +140,7 @@ Unabhängiges Projekt, nicht von Würth Elektronik eiSos herausgegeben.
 3. Fertige ZIP unter *Actions → letzter Lauf → Artifacts* herunterladen.
 4. Bei einem Tag `v*` (z. B. `v1.0.0`) wird zusätzlich ein Release mit der ZIP erstellt.
 
-Die erzeugte ZIP enthält nur eine einzige Datei: `Proteus-BLE-Terminal-MK1.exe`.
+Die erzeugte ZIP enthält nur eine einzige Datei: `Funkmodul-Studio-MK1.exe`.
 Keine Installation und keine Ordner daneben nötig – EXE an einen beliebigen Ort kopieren und starten.
 Beim Start entpackt die EXE ihre Laufzeitbibliotheken kurz in einen temporären Windows-Ordner,
 der erste Start dauert daher ein bis zwei Sekunden länger.

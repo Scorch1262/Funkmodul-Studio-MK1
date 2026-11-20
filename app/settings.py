@@ -5,7 +5,9 @@ import json
 import os
 from pathlib import Path
 
-from . import APP_NAME
+import shutil
+
+from . import APP_NAME, OLD_APP_NAMES
 from .protocol import DEFAULT_PROFILES, ProfileType, ProfileUUIDs
 
 DEFAULTS = {
@@ -29,6 +31,16 @@ DEFAULTS = {
 def config_dir() -> Path:
     base = os.environ.get("APPDATA") or os.path.join(Path.home(), ".config")
     p = Path(base) / APP_NAME
+    if not p.exists():
+        # Einstellungen und Makros der Vorgängerversion übernehmen
+        for old in OLD_APP_NAMES:
+            src = Path(base) / old
+            if (src / "settings.json").exists():
+                try:
+                    shutil.copytree(src, p)
+                except OSError:
+                    pass
+                break
     p.mkdir(parents=True, exist_ok=True)
     return p
 
